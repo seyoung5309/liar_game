@@ -44,9 +44,14 @@ function shuffle(arr) {
   return a;
 }
 
+app.get("/", (req, res) => {
+  res.send("OK");
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
 
 app.post('/api/room', (req, res) => {
   const roomId = uuidv4().slice(0, 8).toUpperCase();
