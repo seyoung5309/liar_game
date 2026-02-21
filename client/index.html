@@ -5,7 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>라이어 게임</title>
-  <link rel="stylesheet" href="./style.css">
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&family=Black+Han+Sans&display=swap"
     rel="stylesheet">
@@ -442,6 +441,17 @@
           state.currentTurnPlayerId = currentTurnPlayerId;
           updateTurnUI();
         }
+
+        // 게임 종료 후 로비로 돌아올 때 화면 전환 보장
+        if (roomState === 'lobby') {
+          const currentScreen = document.querySelector('.screen.active');
+          if (currentScreen && currentScreen.id !== 'lobbyScreen') {
+            hideOverlay('resultOverlay');
+            hideOverlay('votingOverlay');
+            clearVoteTimer();
+            setupLobby(state.roomId);
+          }
+        }
       });
 
       socket.on('game_started', ({ isLiar, category, word, turnOrder, currentTurnPlayerId }) => {
@@ -486,7 +496,11 @@
       });
 
       socket.on('returned_to_lobby', () => {
-        showScreen('lobbyScreen');
+        hideOverlay('resultOverlay');
+        hideOverlay('votingOverlay');
+        clearVoteTimer();
+        setupLobby(state.roomId);
+        updateLobbyPlayers(state.players, state.isHost ? socket.id : state.players.find(p => p.id === socket.id)?.id);
       });
 
       socket.on('became_host', () => {
@@ -820,10 +834,15 @@
 
     document.getElementById('returnToLobbyBtn').addEventListener('click', () => {
       if (state.isHost) {
+        // 서버에 이벤트 보내고 returned_to_lobby 응답 기다림 (방장도 동일하게 처리)
         state.socket?.emit('return_to_lobby', { roomId: state.roomId });
       } else {
-        hideOverlay('resultOverlay');
-        showScreen('lobbyScreen');
+        // 비방장은 서버 이벤트(returned_to_lobby / room_update)로 처리되므로 여기서는 대기
+        // 만약 소켓이 끊긴 경우 fallback
+        if (!state.socket?.connected) {
+          hideOverlay('resultOverlay');
+          showScreen('lobbyScreen');
+        }
       }
     });
 
