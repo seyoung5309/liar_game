@@ -1176,7 +1176,7 @@ body::before {
 
 <script>
 // ====== CONFIG ======
-const SERVER_URL = 'https://liar-game-en4n.onrender.com'; // Replace with your Render URL
+const SERVER_URL = 'https://your-server.onrender.com'; // ← 여기에 Render URL 입력
 
 // ====== AVATARS ======
 const AVATARS = [
@@ -1252,12 +1252,34 @@ function hideOverlay(id) {
   document.getElementById(id).classList.remove('active');
 }
 
-// ====== TOAST ======
-function showToast(msg, duration = 2500) {
+// ====== TOAST (에러 포함) ======
+function showToast(msg, duration = 3000, isError = false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
+  t.style.borderColor = isError ? 'var(--accent)' : 'var(--border)';
+  t.style.color = isError ? 'var(--accent2)' : 'var(--text)';
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ====== 서버 웨이크업 (Render 무료 슬립 대응) ======
+let serverReady = false;
+async function wakeUpServer() {
+  try {
+    const res = await fetch(`${SERVER_URL}/api/health`, { signal: AbortSignal.timeout(15000) });
+    if (res.ok) { serverReady = true; return true; }
+  } catch(e) {}
+  return false;
+}
+
+// 버튼 로딩 상태
+function setButtonLoading(btnId, loading, text) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  btn.innerHTML = loading
+    ? `<span class="spinner"></span> ${text}`
+    : text;
 }
 
 // ====== TITLE SCREEN ======
@@ -1285,66 +1307,130 @@ document.getElementById('nicknameInput').addEventListener('input', (e) => {
 
 document.getElementById('createRoomBtn').addEventListener('click', async () => {
   const nickname = document.getElementById('nicknameInput').value.trim();
-  if (!nickname) { showToast('닉네임을 입력해주세요!'); return; }
+  if (!nickname) { showToast('닉네임을 입력해주세요!', 2500, true); return; }
   state.nickname = nickname;
   state.avatar = selectedAvatar;
 
+  setButtonLoading('createRoomBtn', true, '서버 연결 중...');
+
   try {
-    const res = await fetch(`${SERVER_URL}/api/room`, { method: 'POST' });
+    // 서버 깨우기 (Render 무료 플랜 슬립 대응)
+    if (!serverReady) {
+      showToast('🔄 서버를 깨우는 중... (최대 30초 소요)');
+      await wakeUpServer();
+    }
+    const res = await fetch(`${SERVER_URL}/api/room`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!res.ok) throw new Error('서버 오류');
     const data = await res.json();
-    connectAndJoin(data.roomId);
+    serverReady = true;
+    setButtonLoading('createRoomBtn', false, '새 방 만들기');
+    connectAndJoin(data.roomId, true);
   } catch(e) {
-    showToast('서버에 연결할 수 없습니다. SERVER_URL을 확인해주세요.');
-    // Demo mode
-    connectAndJoin('DEMO' + Math.random().toString(36).slice(2,6).toUpperCase());
+    setButtonLoading('createRoomBtn', false, '새 방 만들기');
+    showToast('⚠️ 서버 연결 실패. SERVER_URL을 확인해주세요.', 4000, true);
+    console.error('Create room error:', e);
   }
 });
 
-document.getElementById('joinRoomBtn').addEventListener('click', () => {
+document.getElementById('joinRoomBtn').addEventListener('click', async () => {
   const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
   const nickname = document.getElementById('nicknameInput').value.trim();
-  if (!nickname) { showToast('닉네임을 입력해주세요!'); return; }
-  if (!code) { showToast('방 코드를 입력해주세요!'); return; }
+  if (!nickname) { showToast('닉네임을 입력해주세요!', 2500, true); return; }
+  if (!code || code.length < 4) { showToast('방 코드를 올바르게 입력해주세요!', 2500, true); return; }
   state.nickname = nickname;
   state.avatar = selectedAvatar;
-  connectAndJoin(code);
+
+  setButtonLoading('joinRoomBtn', true, '연결 중...');
+
+  // 서버 깨우기
+  if (!serverReady) {
+    showToast('🔄 서버를 깨우는 중... (최대 30초 소요)');
+    const ok = await wakeUpServer();
+    if (!ok) {
+      setButtonLoading('joinRoomBtn', false, '참가');
+      showToast('⚠️ 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.', 4000, true);
+      return;
+    }
+  }
+
+  // 방 존재 여부 먼저 확인 (더 명확한 에러 메시지)
+  try {
+    const check = await fetch(`${SERVER_URL}/api/room/${code}`, {
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!check.ok) {
+      setButtonLoading('joinRoomBtn', false, '참가');
+      const data = await check.json().catch(() => ({}));
+      showToast(`❌ 방 코드 "${code}"를 찾을 수 없습니다. 코드를 다시 확인해주세요.`, 4000, true);
+      return;
+    }
+    const roomData = await check.json();
+    if (roomData.state !== 'lobby') {
+      setButtonLoading('joinRoomBtn', false, '참가');
+      showToast('⚠️ 해당 방에서 게임이 이미 시작되었습니다.', 3000, true);
+      return;
+    }
+  } catch(e) {
+    setButtonLoading('joinRoomBtn', false, '참가');
+    showToast('⚠️ 서버 연결 오류. 잠시 후 다시 시도해주세요.', 4000, true);
+    return;
+  }
+
+  setButtonLoading('joinRoomBtn', false, '참가');
+  connectAndJoin(code, false);
 });
 
-// Check URL params for room join
+// URL 파라미터로 방 코드 자동 입력
 window.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
   const roomId = params.get('room');
   if (roomId) {
-    document.getElementById('roomCodeInput').value = roomId;
+    document.getElementById('roomCodeInput').value = roomId.toUpperCase();
+    showToast('📨 초대 링크로 접속했습니다. 닉네임을 입력 후 참가하세요!', 4000);
   }
+  // 페이지 로드 시 백그라운드에서 서버 웨이크업 시작
+  wakeUpServer();
 });
 
 // ====== SOCKET CONNECTION ======
-function connectAndJoin(roomId) {
-  if (state.socket) state.socket.disconnect();
+function connectAndJoin(roomId, isCreating = false) {
+  if (state.socket) {
+    state.socket.disconnect();
+    state.socket = null;
+  }
 
-  const socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
+  const rid = (roomId || '').toUpperCase().trim();
+  const socket = io(SERVER_URL, {
+    transports: ['websocket', 'polling'],
+    reconnectionAttempts: 3,
+    timeout: 10000,
+  });
   state.socket = socket;
-  state.roomId = roomId;
+  state.roomId = rid;
   state.myId = null;
 
   socket.on('connect', () => {
     state.myId = socket.id;
+    serverReady = true;
     socket.emit('join_room', {
-      roomId,
+      roomId: rid,
       nickname: state.nickname,
-      avatar: state.avatar
+      avatar: state.avatar,
+      createIfNotExists: isCreating, // 방장 재연결 시 방 재생성
     });
   });
 
-  socket.on('connect_error', () => {
-    showToast('서버 연결 실패. 데모 모드로 실행합니다.');
-    runDemoMode();
+  socket.on('connect_error', (err) => {
+    console.error('Socket connect error:', err);
+    showToast('❌ 서버 소켓 연결 실패. 페이지를 새로고침 해주세요.', 5000, true);
   });
 
-  socket.on('joined', ({ roomId: rid, isHost }) => {
+  socket.on('joined', ({ roomId: joinedRid, isHost }) => {
     state.isHost = isHost;
-    setupLobby(rid);
+    setupLobby(joinedRid);
   });
 
   socket.on('room_update', ({ players, host, state: roomState, currentTurnPlayerId }) => {
@@ -1355,10 +1441,6 @@ function connectAndJoin(roomId) {
     if (currentTurnPlayerId) {
       state.currentTurnPlayerId = currentTurnPlayerId;
       updateTurnUI();
-    }
-
-    if (roomState === 'lobby') {
-      // already handled
     }
   });
 
@@ -1403,23 +1485,28 @@ function connectAndJoin(roomId) {
     showResultOverlay(result);
   });
 
-  socket.on('vote_skipped', () => {
-    // continue playing
-  });
-
   socket.on('returned_to_lobby', () => {
     showScreen('lobbyScreen');
   });
 
-  socket.on('player_left', ({ playerId }) => {
-    addSystemMessage(`플레이어가 나갔습니다.`);
+  socket.on('became_host', () => {
+    state.isHost = true;
+    showToast('👑 방장이 되었습니다!');
+    updateLobbyPlayers(state.players, socket.id);
+  });
+
+  socket.on('player_left', ({ playerId, nickname: leftName }) => {
+    addSystemMessage(`${leftName || '플레이어'}님이 나갔습니다.`);
     if (state.turnOrder) {
       state.turnOrder = state.turnOrder.filter(p => p.id !== playerId);
     }
   });
 
   socket.on('error', ({ message }) => {
-    showToast('⚠️ ' + message);
+    showToast('⚠️ ' + message, 4000, true);
+    // 연결은 했지만 방 진입 실패 시 소켓 정리
+    socket.disconnect();
+    state.socket = null;
   });
 }
 
