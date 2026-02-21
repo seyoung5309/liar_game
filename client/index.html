@@ -103,6 +103,56 @@
     </div>
   </div>
 
+
+  <!-- ====== 라이어 단어 추측 오버레이 ====== -->
+  <div class="guess-overlay" id="guessOverlay">
+    <div class="guess-modal">
+
+      <!-- 라이어 본인용 추측 UI -->
+      <div id="guessLiarView">
+        <div class="guess-title">🎯 마지막 기회!</div>
+        <div class="guess-subtitle">
+          라이어가 지목됐습니다.<br>
+          제시어를 맞히면 <strong style="color:var(--accent2);">역전 승리!</strong>
+        </div>
+        <div class="guess-category" id="guessCategoryDisplay"></div>
+        <div class="guess-timer" id="guessTimer">20</div>
+
+        <div class="guess-input-row" id="guessInputRow">
+          <input class="guess-input" id="guessInput" placeholder="제시어 입력..." maxlength="20" autocomplete="off">
+          <button class="guess-submit" id="guessSubmit">확인</button>
+        </div>
+        <div class="guess-hint">한 번만 입력할 수 있습니다</div>
+
+        <div class="guess-result" id="guessResult">
+          <div class="guess-result-icon" id="guessResultIcon"></div>
+          <div class="guess-result-text" id="guessResultText"></div>
+          <div class="guess-result-word" id="guessResultWord"></div>
+        </div>
+      </div>
+
+      <!-- 관전자용 대기 UI -->
+      <div id="guessSpectatorView" style="display:none;">
+        <div class="guess-title">🎯 역전의 기회!</div>
+        <div class="guess-waiting">
+          <div class="guess-waiting-liar">
+            <div class="guess-waiting-avatar" id="guessLiarAvatar"></div>
+            <div class="guess-waiting-name" id="guessLiarName"></div>
+          </div>
+          <div class="guess-waiting-text">
+            라이어가 제시어를 맞히면 역전 승리!<br>
+            카테고리: <strong style="color:var(--gold);" id="guessSpecCategory"></strong>
+          </div>
+          <div class="guess-waiting-dots">
+            <span>.</span><span>.</span><span>.</span>
+          </div>
+          <div class="guess-timer" id="guessTimerSpec">20</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- ====== GAME SCREEN ====== -->
   <div class="screen" id="gameScreen">
     <div class="game-layout">
@@ -130,10 +180,32 @@
 
       <!-- Sidebar -->
       <div class="game-sidebar">
-        <div class="sidebar-card">
-          <div class="sidebar-title">발언 순서</div>
-          <div class="turn-list" id="turnList"></div>
+
+        <!-- 탭 카드: 순서 / 자유채팅 -->
+        <div class="sidebar-card has-tabs">
+          <div class="sidebar-tabs">
+            <button class="sidebar-tab active" id="tabTurn" onclick="switchSidebarTab('turn')">📋 발언 순서</button>
+            <button class="sidebar-tab" id="tabChat" onclick="switchSidebarTab('chat')">💬 채팅</button>
+          </div>
+
+          <!-- 발언 순서 패널 -->
+          <div class="sidebar-tab-panel active" id="panelTurn">
+            <div class="turn-list" id="turnList"></div>
+          </div>
+
+          <!-- 자유 채팅 패널 -->
+          <div class="sidebar-tab-panel" id="panelChat">
+            <div class="free-chat-messages" id="freeChatMessages">
+              <div class="free-system-msg">게임 중 자유롭게 대화하세요!</div>
+            </div>
+            <div class="free-chat-input-row">
+              <input class="free-chat-input" id="freeChatInput" placeholder="메시지..." maxlength="100" autocomplete="off">
+              <button class="free-chat-send" id="freeChatSend">➤</button>
+            </div>
+          </div>
         </div>
+
+        <!-- 진행 카드 -->
         <div class="sidebar-card" id="hostActionsCard" style="display:none;">
           <div class="sidebar-title">진행</div>
           <div class="vote-actions">
@@ -229,6 +301,9 @@
       voteTimeLeft: 60,
       myVote: null,
       round: 1,
+      guessTimerInterval: null,
+      guessTimeLeft: 20,
+      pendingResult: null,
     };
 
     // ====== PARTICLES ======
@@ -513,7 +588,34 @@
       socket.on('vote_result', (result) => {
         clearVoteTimer();
         hideOverlay('votingOverlay');
-        showResultOverlay(result);
+
+        if (result.awaitingGuess) {
+          // 라이어가 지목됨 → 추측 오버레이 먼저 표시, 결과는 나중에
+          state.pendingResult = result;
+          showGuessOverlay(result);
+        } else {
+          showResultOverlay(result);
+        }
+      });
+
+      socket.on('liar_guess_result', ({ guess, correct, word, liarId }) => {
+        // 추측 결과 표시
+        showGuessResult(guess, correct, word);
+        // 잠시 후 최종 결과 오버레이로 전환
+        setTimeout(() => {
+          hideGuessOverlay();
+          if (state.pendingResult) {
+            // 최종 결과 업데이트 (단어 포함)
+            state.pendingResult.topic = { ...state.pendingResult.topic, word };
+            // 라이어가 맞혔으면 결과 반전
+            if (correct) {
+              state.pendingResult.isLiar = false; // 라이어 승리
+              state.pendingResult.liarWonByGuess = true;
+            }
+            showResultOverlay(state.pendingResult);
+            state.pendingResult = null;
+          }
+        }, 3000);
       });
 
       socket.on('returned_to_lobby', () => {
@@ -528,6 +630,10 @@
         state.isHost = true;
         showToast('👑 방장이 되었습니다!');
         updateLobbyPlayers(state.players, socket.id);
+      });
+
+      socket.on('game_chat_message', (msg) => {
+        appendFreeChatMsg(msg, socket.id);
       });
 
       socket.on('player_left', ({ playerId, nickname: leftName }) => {
@@ -668,6 +774,13 @@
       updateTurnUI();
       updateChatInput();
 
+      // 자유 채팅 초기화
+      const freeMsgs = document.getElementById('freeChatMessages');
+      if (freeMsgs) {
+        freeMsgs.innerHTML = '<div class="free-system-msg">게임 중 자유롭게 대화하세요!</div>';
+      }
+      switchSidebarTab('turn'); // 게임 시작 시 순서 탭으로
+
       // Host actions
       if (state.isHost) {
         document.getElementById('hostActionsCard').style.display = 'block';
@@ -770,6 +883,18 @@
       input.value = '';
     }
 
+    // 게임 내 자유 채팅
+    document.getElementById('freeChatSend').addEventListener('click', sendFreeChat);
+    document.getElementById('freeChatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendFreeChat(); }
+    });
+
+    // 라이어 추측 제출
+    document.getElementById('guessSubmit').addEventListener('click', submitGuess);
+    document.getElementById('guessInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitGuess();
+    });
+
     // Vote button
     document.getElementById('callVoteBtn').addEventListener('click', () => {
       state.socket?.emit('call_vote', { roomId: state.roomId });
@@ -849,15 +974,23 @@
 
     // ====== RESULT ======
     function showResultOverlay(result) {
-      const { eliminated, isLiar, liar, topic } = result;
+      const { eliminated, isLiar, liar, topic, liarWonByGuess, tied } = result;
 
       const outcomeEl = document.getElementById('resultOutcome');
       const descEl = document.getElementById('resultDesc');
 
-      if (isLiar) {
+      if (liarWonByGuess) {
+        outcomeEl.textContent = '🎭 라이어 역전 승리!';
+        outcomeEl.className = 'result-outcome liar-win';
+        descEl.textContent = '라이어가 제시어를 맞혔습니다!';
+      } else if (isLiar) {
         outcomeEl.textContent = '🎉 시민 승리!';
         outcomeEl.className = 'result-outcome citizens-win';
-        descEl.textContent = `라이어를 잡았습니다!`;
+        descEl.textContent = '라이어를 잡아냈습니다!';
+      } else if (tied) {
+        outcomeEl.textContent = '🤝 무승부!';
+        outcomeEl.className = 'result-outcome';
+        descEl.textContent = '동점으로 아무도 탈락하지 않았습니다.';
       } else {
         outcomeEl.textContent = '🎭 라이어 승리!';
         outcomeEl.className = 'result-outcome liar-win';
@@ -987,6 +1120,165 @@
       state.socket.emit('lobby_chat', { roomId: state.roomId, message });
       input.value = '';
       input.focus();
+    }
+
+
+    // ====== 사이드바 탭 전환 ======
+    function switchSidebarTab(tab) {
+      document.getElementById('tabTurn').classList.toggle('active', tab === 'turn');
+      document.getElementById('tabChat').classList.toggle('active', tab === 'chat');
+      document.getElementById('panelTurn').classList.toggle('active', tab === 'turn');
+      document.getElementById('panelChat').classList.toggle('active', tab === 'chat');
+      if (tab === 'chat') {
+        // 채팅탭 열 때 읽지 않은 표시 제거 + 스크롤
+        document.getElementById('tabChat').textContent = '💬 채팅';
+        const msgs = document.getElementById('freeChatMessages');
+        if (msgs) msgs.scrollTop = msgs.scrollHeight;
+      }
+    }
+
+    // ====== 게임 내 자유 채팅 ======
+    function sendFreeChat() {
+      const input = document.getElementById('freeChatInput');
+      if (!input) return;
+      const message = input.value.trim();
+      if (!message || !state.socket?.connected) return;
+      state.socket.emit('game_chat', { roomId: state.roomId, message });
+      input.value = '';
+      input.focus();
+    }
+
+    function appendFreeChatMsg(msg, mySocketId) {
+      const container = document.getElementById('freeChatMessages');
+      if (!container) return;
+      const isMe = msg.playerId === mySocketId;
+      const avatarEmoji = typeof msg.avatar === 'object' ? msg.avatar.emoji : (msg.avatar || '👤');
+
+      const div = document.createElement('div');
+      div.className = 'free-msg' + (isMe ? ' mine' : '');
+      div.innerHTML = `
+    <div class="free-msg-avatar">${avatarEmoji}</div>
+    <div class="free-msg-body">
+      <div class="free-msg-name">${escapeHtml(msg.nickname)}</div>
+      <div class="free-msg-bubble">${escapeHtml(msg.message)}</div>
+    </div>
+  `;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+
+      // 채팅 탭이 닫혀 있으면 뱃지 표시
+      if (!document.getElementById('panelChat').classList.contains('active')) {
+        document.getElementById('tabChat').textContent = '💬 채팅 🔴';
+      }
+    }
+
+    // ====== 라이어 추측 오버레이 ======
+    let guessTimerInterval = null;
+
+    function showGuessOverlay(result) {
+      const liar = result.liar;
+      const category = result.topic?.category || '';
+      const amLiar = state.isLiar;
+
+      // 라이어 뷰 / 관전자 뷰 전환
+      document.getElementById('guessLiarView').style.display = amLiar ? 'block' : 'none';
+      document.getElementById('guessSpectatorView').style.display = amLiar ? 'none' : 'block';
+
+      if (amLiar) {
+        // 라이어 본인용 UI 초기화
+        document.getElementById('guessCategoryDisplay').textContent = '카테고리: ' + category;
+        document.getElementById('guessInput').value = '';
+        document.getElementById('guessInput').disabled = false;
+        document.getElementById('guessSubmit').disabled = false;
+        document.getElementById('guessInputRow').style.display = 'flex';
+        document.getElementById('guessResult').classList.remove('show');
+        document.getElementById('guessHint') && (document.getElementById('guessHint').style.display = 'block');
+        startGuessTimer('guessTimer', 20);
+      } else {
+        // 관전자용 UI
+        const avatarEmoji = typeof liar?.avatar === 'object' ? liar.avatar.emoji : (liar?.avatar || '🎭');
+        document.getElementById('guessLiarAvatar').textContent = avatarEmoji;
+        document.getElementById('guessLiarName').textContent = liar?.nickname || '라이어';
+        document.getElementById('guessSpecCategory').textContent = category;
+        startGuessTimer('guessTimerSpec', 20);
+      }
+
+      document.getElementById('guessOverlay').classList.add('active');
+    }
+
+    function hideGuessOverlay() {
+      clearGuessTimer();
+      document.getElementById('guessOverlay').classList.remove('active');
+    }
+
+    function startGuessTimer(elemId, total) {
+      clearGuessTimer();
+      let left = total;
+      const el = document.getElementById(elemId);
+      if (el) el.textContent = left;
+
+      guessTimerInterval = setInterval(() => {
+        left--;
+        if (el) {
+          el.textContent = left;
+          el.classList.toggle('urgent', left <= 5);
+        }
+        if (left <= 0) {
+          clearGuessTimer();
+          // 시간 초과 → 결과 오버레이로 (서버에서 liar_guess_result 없이 넘어갈 경우 fallback)
+          setTimeout(() => {
+            hideGuessOverlay();
+            if (state.pendingResult) {
+              showResultOverlay(state.pendingResult);
+              state.pendingResult = null;
+            }
+          }, 500);
+        }
+      }, 1000);
+    }
+
+    function clearGuessTimer() {
+      clearInterval(guessTimerInterval);
+      guessTimerInterval = null;
+      ['guessTimer', 'guessTimerSpec'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('urgent');
+      });
+    }
+
+    function submitGuess() {
+      const input = document.getElementById('guessInput');
+      const guess = input?.value.trim();
+      if (!guess) return;
+
+      // 입력 잠금
+      input.disabled = true;
+      document.getElementById('guessSubmit').disabled = true;
+      clearGuessTimer();
+
+      state.socket?.emit('liar_guess', { roomId: state.roomId, guess });
+    }
+
+    function showGuessResult(guess, correct, word) {
+      // 입력 행 숨기고 결과 표시
+      document.getElementById('guessInputRow').style.display = 'none';
+      const resultEl = document.getElementById('guessResult');
+      resultEl.classList.add('show');
+
+      document.getElementById('guessResultIcon').textContent = correct ? '🎉' : '😢';
+      const textEl = document.getElementById('guessResultText');
+      textEl.textContent = correct ? '정답! 역전 승리!' : '틀렸습니다...';
+      textEl.className = 'guess-result-text ' + (correct ? 'correct' : 'wrong');
+      document.getElementById('guessResultWord').innerHTML = `제시어: <span>${escapeHtml(word)}</span>`;
+
+      // 관전자 화면도 업데이트
+      document.getElementById('guessSpecCategory').textContent = word;
+
+      clearGuessTimer();
+      ['guessTimer', 'guessTimerSpec'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = correct ? '✓' : '✗';
+      });
     }
 
     // ====== UTILS ======

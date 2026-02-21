@@ -1431,3 +1431,410 @@ input:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
+
+/* ============================
+   GAME 자유 채팅 패널
+   ============================ */
+.game-layout {
+    /* 기존 grid-template-areas에 free-chat 칼럼 추가는 구조가 복잡해지므로
+     사이드바 안에 탭으로 통합 */
+}
+
+/* 사이드바 탭 */
+.sidebar-tabs {
+    display: flex;
+    gap: 0;
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 3px;
+    margin-bottom: 0.7rem;
+}
+
+.sidebar-tab {
+    flex: 1;
+    padding: 0.4rem 0;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+}
+
+.sidebar-tab.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sidebar-tab-panel {
+    display: none;
+}
+
+.sidebar-tab-panel.active {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+/* 사이드바 카드에 free-chat이 있을 때 flex 확장 */
+.sidebar-card.has-tabs {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.free-chat-messages {
+    flex: 1;
+    min-height: 80px;
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.4rem 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.free-chat-messages::-webkit-scrollbar {
+    width: 3px;
+}
+
+.free-chat-messages::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+
+.free-msg {
+    display: flex;
+    gap: 0.4rem;
+    align-items: flex-start;
+    animation: msgIn 0.2s ease;
+}
+
+.free-msg.mine {
+    flex-direction: row-reverse;
+}
+
+.free-msg-avatar {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    width: 22px;
+    text-align: center;
+    line-height: 1;
+}
+
+.free-msg-body {
+    max-width: 80%;
+}
+
+.free-msg-name {
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    margin-bottom: 0.1rem;
+}
+
+.free-msg.mine .free-msg-name {
+    text-align: right;
+}
+
+.free-msg-bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.free-msg.mine .free-msg-bubble {
+    background: rgba(6, 214, 160, 0.12);
+    border-color: rgba(6, 214, 160, 0.25);
+}
+
+.free-chat-input-row {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.free-chat-input {
+    flex: 1;
+    padding: 0.45rem 0.7rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: max(14px, 0.8rem);
+    outline: none;
+    transition: border-color 0.2s;
+    min-height: 34px;
+}
+
+.free-chat-input:focus {
+    border-color: var(--teal);
+}
+
+.free-chat-send {
+    padding: 0.45rem 0.75rem;
+    background: var(--teal);
+    border: none;
+    border-radius: 8px;
+    color: var(--bg);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 34px;
+}
+
+.free-chat-send:hover {
+    opacity: 0.85;
+}
+
+.free-chat-send:active {
+    transform: scale(0.96);
+}
+
+.free-system-msg {
+    text-align: center;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    padding: 0.15rem 0;
+}
+
+/* ============================
+   라이어 단어 추측 오버레이
+   ============================ */
+.guess-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 15, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 150;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.guess-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.guess-modal {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 24px;
+    padding: clamp(1.5rem, 5vw, 2.2rem);
+    text-align: center;
+    box-shadow: 0 0 60px rgba(230, 57, 70, 0.25);
+}
+
+.guess-title {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: clamp(1.4rem, 5vw, 1.8rem);
+    color: var(--accent2);
+    margin-bottom: 0.4rem;
+}
+
+.guess-subtitle {
+    font-size: clamp(0.8rem, 2.5vw, 0.9rem);
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.guess-category {
+    display: inline-block;
+    background: rgba(255, 209, 102, 0.15);
+    border: 1px solid rgba(255, 209, 102, 0.3);
+    border-radius: 8px;
+    padding: 0.3rem 1rem;
+    font-size: 0.85rem;
+    color: var(--gold);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-bottom: 1.2rem;
+}
+
+.guess-timer {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: clamp(2rem, 7vw, 2.8rem);
+    color: var(--gold);
+    margin-bottom: 1rem;
+    transition: color 0.3s;
+}
+
+.guess-timer.urgent {
+    color: var(--accent);
+    animation: timerBlink 0.5s infinite;
+}
+
+.guess-input-row {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+}
+
+.guess-input {
+    flex: 1;
+    padding: 0.85rem 1rem;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: max(16px, 1rem);
+    outline: none;
+    transition: border-color 0.2s;
+    text-align: center;
+}
+
+.guess-input:focus {
+    border-color: var(--accent);
+}
+
+.guess-submit {
+    padding: 0.85rem 1.2rem;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.guess-submit:hover {
+    background: var(--accent2);
+}
+
+.guess-submit:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.guess-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* 추측 결과 */
+.guess-result {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.guess-result.show {
+    display: flex;
+}
+
+.guess-result-icon {
+    font-size: 3rem;
+}
+
+.guess-result-text {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: clamp(1.3rem, 4vw, 1.6rem);
+}
+
+.guess-result-text.correct {
+    color: var(--teal);
+}
+
+.guess-result-text.wrong {
+    color: var(--accent);
+}
+
+.guess-result-word {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.guess-result-word span {
+    color: var(--gold);
+    font-weight: 700;
+}
+
+/* 관전자용 추측 대기 UI */
+.guess-waiting {
+    text-align: center;
+}
+
+.guess-waiting-text {
+    font-size: clamp(0.85rem, 2.5vw, 1rem);
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+.guess-waiting-liar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.guess-waiting-avatar {
+    font-size: 2rem;
+}
+
+.guess-waiting-name {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.guess-waiting-dots span {
+    display: inline-block;
+    animation: dotBounce 1.2s infinite;
+    font-size: 1.5rem;
+}
+
+.guess-waiting-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.guess-waiting-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes dotBounce {
+
+    0%,
+    80%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+
+    40% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
+}

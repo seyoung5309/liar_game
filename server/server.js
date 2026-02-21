@@ -120,6 +120,7 @@ app.post("/api/room", (req, res) => {
     round: 1,
     chatMessages: [],
     lobbyChatMessages: [],
+    gameChatMessages: [],
     createdAt: Date.now(),
   };
   console.log(`Room created: ${roomId}`);
@@ -403,6 +404,66 @@ io.on("connection", (socket) => {
     io.to(rid).emit("lobby_chat_message", msg);
   });
 
+  // ====== 게임 내 자유 채팅 ======
+  socket.on("game_chat", ({ roomId, message }) => {
+    const rid = (roomId || "").toUpperCase().trim();
+    const room = rooms[rid];
+    if (!room || room.state === "lobby") return;
+
+    const player = room.players.find((p) => p.id === socket.id);
+    if (!player) return;
+
+    const trimmed = message.trim().slice(0, 100);
+    if (!trimmed) return;
+
+    const msg = {
+      playerId: socket.id,
+      nickname: player.nickname,
+      avatar: player.avatar,
+      message: trimmed,
+      timestamp: Date.now(),
+      type: "free", // 자유 채팅
+    };
+
+    room.gameChatMessages.push(msg);
+    if (room.gameChatMessages.length > 200) room.gameChatMessages.shift();
+
+    io.to(rid).emit("game_chat_message", msg);
+  });
+
+  // ====== 라이어 단어 추측 ======
+  socket.on("liar_guess", ({ roomId, guess }) => {
+    const rid = (roomId || "").toUpperCase().trim();
+    const room = rooms[rid];
+    if (!room || room.state !== "result") return;
+
+    // 라이어만 추측 가능
+    if (socket.id !== room.liar) return;
+
+    const trimmed = (guess || "").trim();
+    if (!trimmed) return;
+
+    const correct =
+      trimmed === room.topic.word ||
+      trimmed.toLowerCase() === room.topic.word.toLowerCase();
+
+    console.log(
+      `Liar guess: "${trimmed}" vs "${room.topic.word}" → ${correct ? "CORRECT" : "WRONG"}`,
+    );
+
+    io.to(rid).emit("liar_guess_result", {
+      guess: trimmed,
+      correct,
+      word: room.topic.word,
+      liarId: socket.id,
+    });
+
+    // 정답이면 라이어 최종 승리로 상태 업데이트
+    if (correct) {
+      room.state = "liar_won";
+    }
+  });
+
   socket.on("disconnect", () => {
     const roomId = socket.data.roomId;
     if (!roomId || !rooms[roomId]) return;
@@ -465,6 +526,9 @@ function endVoting(roomId) {
 
   room.state = "result";
 
+  // 라이어가 지목됐으면 추측 기회 부여 (단어 숨김)
+  const awaitingGuess = isLiar && eliminated !== null;
+
   io.to(roomId).emit("vote_result", {
     eliminated: eliminatedPlayer
       ? {
@@ -481,10 +545,13 @@ function endVoting(roomId) {
           avatar: liarPlayer.avatar,
         }
       : null,
-    topic: room.topic,
+    topic: awaitingGuess
+      ? { category: room.topic.category, word: null }
+      : room.topic, // 추측 전엔 단어 숨김
     tally,
     votes: room.votes,
     tied: topCount > 1,
+    awaitingGuess, // 라이어에게 추측 기회 있음
   });
 }
 
