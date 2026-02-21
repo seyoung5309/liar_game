@@ -83,6 +83,19 @@
         <div class="players-grid" id="playersGrid"></div>
       </div>
 
+      <!-- 로비 채팅 -->
+      <div class="lobby-chat-section">
+        <div class="lobby-chat-header">💬 대기실 채팅</div>
+        <div class="lobby-chat-messages" id="lobbyChatMessages">
+          <div class="lobby-system-msg">대기실에 입장했습니다. 자유롭게 대화하세요!</div>
+        </div>
+        <div class="lobby-chat-input-row">
+          <input class="lobby-chat-input" id="lobbyChatInput" placeholder="메시지 입력..." maxlength="100"
+            autocomplete="off">
+          <button class="lobby-chat-send" id="lobbyChatSend">➤</button>
+        </div>
+      </div>
+
       <div class="lobby-actions">
         <button class="btn-primary" id="startGameBtn" style="display:none;">게임 시작 🎮</button>
         <div class="waiting-text" id="waitingText">방장이 게임을 시작하길 기다리는 중...</div>
@@ -176,7 +189,7 @@
 
   <script>
     // ====== CONFIG ======
-    const SERVER_URL = 'https://liar-game-en4n.onrender.com'; // ← 여기에 Render URL 입력
+    const SERVER_URL = 'https://your-server.onrender.com'; // ← 여기에 Render URL 입력
 
     // ====== AVATARS ======
     const AVATARS = [
@@ -433,7 +446,14 @@
         setupLobby(joinedRid);
       });
 
+      // 다른 플레이어 입장 알림 (room_update에서 처리하기 어려우니 별도 이벤트로)
+
       socket.on('room_update', ({ players, host, state: roomState, currentTurnPlayerId }) => {
+        // 새로 입장한 플레이어 감지
+        const prevIds = new Set(state.players.map(p => p.id));
+        const newcomers = players.filter(p => !prevIds.has(p.id) && p.id !== socket.id);
+        newcomers.forEach(p => addLobbyChatSystem(`${p.nickname}님이 입장했습니다! 👋`));
+
         state.players = players;
         state.isHost = host === socket.id;
         updateLobbyPlayers(players, host);
@@ -512,9 +532,23 @@
 
       socket.on('player_left', ({ playerId, nickname: leftName }) => {
         addSystemMessage(`${leftName || '플레이어'}님이 나갔습니다.`);
+        addLobbyChatSystem(`${leftName || '플레이어'}님이 나갔습니다.`);
         if (state.turnOrder) {
           state.turnOrder = state.turnOrder.filter(p => p.id !== playerId);
         }
+      });
+
+      // ====== 로비 채팅 소켓 이벤트 ======
+      socket.on('lobby_chat_history', (messages) => {
+        const container = document.getElementById('lobbyChatMessages');
+        // 기존 시스템 메시지 유지하고 히스토리 추가
+        messages.forEach(msg => appendLobbyChatMsg(msg, socket.id));
+        scrollLobbyChatToBottom();
+      });
+
+      socket.on('lobby_chat_message', (msg) => {
+        appendLobbyChatMsg(msg, socket.id);
+        scrollLobbyChatToBottom();
       });
 
       socket.on('error', ({ message }) => {
@@ -531,6 +565,8 @@
       document.getElementById('roomIdBadge').textContent = roomId;
       document.getElementById('inviteUrl').textContent = url;
       showScreen('lobbyScreen');
+      // 로비 복귀 시 채팅창 스크롤 맨 아래로
+      setTimeout(scrollLobbyChatToBottom, 100);
     }
 
     function updateLobbyPlayers(players, host) {
@@ -583,6 +619,15 @@
           btn.classList.remove('copied');
         }, 2000);
       });
+    });
+
+    // 로비 채팅 전송
+    document.getElementById('lobbyChatSend').addEventListener('click', sendLobbyChat);
+    document.getElementById('lobbyChatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendLobbyChat();
+      }
     });
 
     document.getElementById('startGameBtn').addEventListener('click', () => {
@@ -897,6 +942,51 @@
       document.getElementById('sendBtn').addEventListener('click', () => {
         // handled by real sendChat which calls socket
       });
+    }
+
+
+    // ====== 로비 채팅 함수 ======
+    function appendLobbyChatMsg(msg, mySocketId) {
+      const container = document.getElementById('lobbyChatMessages');
+      if (!container) return;
+      const isMe = msg.playerId === mySocketId;
+      const avatarEmoji = typeof msg.avatar === 'object' ? msg.avatar.emoji : (msg.avatar || '👤');
+
+      const div = document.createElement('div');
+      div.className = 'lobby-msg' + (isMe ? ' mine' : '');
+      div.innerHTML = `
+    <div class="lobby-msg-avatar">${avatarEmoji}</div>
+    <div class="lobby-msg-body">
+      <div class="lobby-msg-sender">${escapeHtml(msg.nickname)}</div>
+      <div class="lobby-msg-bubble">${escapeHtml(msg.message)}</div>
+    </div>
+  `;
+      container.appendChild(div);
+    }
+
+    function addLobbyChatSystem(text) {
+      const container = document.getElementById('lobbyChatMessages');
+      if (!container) return;
+      const div = document.createElement('div');
+      div.className = 'lobby-system-msg';
+      div.textContent = text;
+      container.appendChild(div);
+      scrollLobbyChatToBottom();
+    }
+
+    function scrollLobbyChatToBottom() {
+      const container = document.getElementById('lobbyChatMessages');
+      if (container) container.scrollTop = container.scrollHeight;
+    }
+
+    function sendLobbyChat() {
+      const input = document.getElementById('lobbyChatInput');
+      if (!input) return;
+      const message = input.value.trim();
+      if (!message || !state.socket?.connected) return;
+      state.socket.emit('lobby_chat', { roomId: state.roomId, message });
+      input.value = '';
+      input.focus();
     }
 
     // ====== UTILS ======

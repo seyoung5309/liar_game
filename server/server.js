@@ -99,10 +99,6 @@ function shuffle(arr) {
   return a;
 }
 
-app.get("/", (req, res) => {
-  res.send("OK");
-});
-
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", rooms: Object.keys(rooms).length });
 });
@@ -123,6 +119,7 @@ app.post("/api/room", (req, res) => {
     voteTimer: null,
     round: 1,
     chatMessages: [],
+    lobbyChatMessages: [],
     createdAt: Date.now(),
   };
   console.log(`Room created: ${roomId}`);
@@ -226,6 +223,11 @@ io.on("connection", (socket) => {
       state: room.state,
     });
     socket.emit("joined", { roomId: rid, isHost: room.host === socket.id });
+
+    // 기존 로비 채팅 내역 전송 (최근 50개)
+    if (room.lobbyChatMessages && room.lobbyChatMessages.length > 0) {
+      socket.emit("lobby_chat_history", room.lobbyChatMessages.slice(-50));
+    }
   });
 
   socket.on("start_game", ({ roomId }) => {
@@ -370,6 +372,35 @@ io.on("connection", (socket) => {
       host: room.host,
       state: "lobby",
     });
+  });
+
+  // ====== 로비 채팅 ======
+  socket.on("lobby_chat", ({ roomId, message }) => {
+    const rid = (roomId || "").toUpperCase().trim();
+    const room = rooms[rid];
+    if (!room) return;
+
+    const player = room.players.find((p) => p.id === socket.id);
+    if (!player) return;
+
+    const trimmed = message.trim().slice(0, 100);
+    if (!trimmed) return;
+
+    const msg = {
+      playerId: socket.id,
+      nickname: player.nickname,
+      avatar: player.avatar,
+      message: trimmed,
+      timestamp: Date.now(),
+    };
+
+    room.lobbyChatMessages.push(msg);
+    // 메모리 절약: 최근 100개만 유지
+    if (room.lobbyChatMessages.length > 100) {
+      room.lobbyChatMessages.shift();
+    }
+
+    io.to(rid).emit("lobby_chat_message", msg);
   });
 
   socket.on("disconnect", () => {
