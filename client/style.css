@@ -1,3 +1,6 @@
+/* ============================
+   VARIABLES & RESET
+   ============================ */
 :root {
     --bg: #0a0a0f;
     --surface: #12121a;
@@ -10,21 +13,36 @@
     --purple: #7b2fff;
     --text: #f0eeff;
     --text-muted: #888899;
-    --shadow: 0 0 40px rgba(230, 57, 70, 0.15);
+
+    /* 반응형 간격 */
+    --gap-sm: clamp(0.5rem, 2vw, 0.8rem);
+    --gap-md: clamp(0.8rem, 3vw, 1.2rem);
+    --gap-lg: clamp(1.2rem, 4vw, 2rem);
+    --pad-x: clamp(0.8rem, 4vw, 1.5rem);
+    --pad-y: clamp(0.6rem, 2vw, 1rem);
 }
 
-* {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+}
+
+html {
+    height: 100%;
 }
 
 body {
     background: var(--bg);
     color: var(--text);
     font-family: 'Noto Sans KR', sans-serif;
-    min-height: 100vh;
+    min-height: 100%;
+    height: 100%;
     overflow-x: hidden;
+    /* 모바일에서 주소창 높이 변화에 대응 */
+    min-height: -webkit-fill-available;
 }
 
 body::before {
@@ -38,7 +56,9 @@ body::before {
     z-index: 0;
 }
 
-/* ====== SCREENS ====== */
+/* ============================
+   SCREENS
+   ============================ */
 .screen {
     position: fixed;
     inset: 0;
@@ -50,6 +70,8 @@ body::before {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s ease;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .screen.active {
@@ -57,15 +79,20 @@ body::before {
     pointer-events: all;
 }
 
-/* ====== TITLE SCREEN ====== */
+/* ============================
+   TITLE SCREEN
+   ============================ */
 .title-wrap {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2.5rem;
+    gap: var(--gap-lg);
     width: 100%;
     max-width: 480px;
-    padding: 2rem;
+    padding: var(--pad-x);
+    /* 세로 스크롤 여유 */
+    padding-top: max(var(--pad-x), env(safe-area-inset-top));
+    padding-bottom: max(var(--pad-x), env(safe-area-inset-bottom));
 }
 
 .game-logo {
@@ -73,7 +100,7 @@ body::before {
 }
 
 .logo-eyebrow {
-    font-size: 0.75rem;
+    font-size: clamp(0.6rem, 1.5vw, 0.75rem);
     letter-spacing: 0.4em;
     color: var(--accent);
     text-transform: uppercase;
@@ -82,18 +109,17 @@ body::before {
 
 .logo-title {
     font-family: 'Black Han Sans', sans-serif;
-    font-size: 4.5rem;
+    font-size: clamp(3rem, 12vw, 4.5rem);
     line-height: 1;
     background: linear-gradient(135deg, #fff 0%, var(--accent2) 50%, var(--accent) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    text-shadow: none;
     filter: drop-shadow(0 0 30px rgba(230, 57, 70, 0.4));
 }
 
 .logo-sub {
-    font-size: 1.1rem;
+    font-size: clamp(0.85rem, 2.5vw, 1.1rem);
     color: var(--text-muted);
     margin-top: 0.5rem;
     letter-spacing: 0.1em;
@@ -105,7 +131,7 @@ body::before {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 20px;
-    padding: 1.5rem;
+    padding: clamp(1rem, 3vw, 1.5rem);
 }
 
 .section-label {
@@ -119,19 +145,19 @@ body::before {
 .avatar-preview {
     display: flex;
     align-items: center;
-    gap: 1.2rem;
+    gap: 1rem;
     margin-bottom: 1rem;
 }
 
 .avatar-display {
-    width: 80px;
-    height: 80px;
+    width: clamp(60px, 15vw, 80px);
+    height: clamp(60px, 15vw, 80px);
     border-radius: 50%;
     background: var(--surface2);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 3rem;
+    font-size: clamp(2rem, 8vw, 3rem);
     border: 2px solid var(--border);
     transition: all 0.3s ease;
     flex-shrink: 0;
@@ -159,39 +185,46 @@ body::before {
 
 .avatar-info {
     flex: 1;
+    min-width: 0;
 }
 
 .avatar-name {
-    font-size: 1rem;
+    font-size: clamp(0.85rem, 2.5vw, 1rem);
     font-weight: 700;
     margin-bottom: 0.2rem;
 }
 
 .avatar-desc {
-    font-size: 0.8rem;
+    font-size: clamp(0.7rem, 2vw, 0.8rem);
     color: var(--text-muted);
 }
 
 .btn-random {
     width: 100%;
-    padding: 0.7rem;
+    padding: 0.75rem;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 12px;
     color: var(--text);
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: clamp(0.8rem, 2.5vw, 0.9rem);
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+    /* 모바일 탭 영역 확보 */
+    min-height: 44px;
 }
 
 .btn-random:hover {
     border-color: var(--purple);
     background: rgba(123, 47, 255, 0.1);
+}
+
+.btn-random:active {
+    transform: scale(0.98);
 }
 
 .dice-icon {
@@ -210,15 +243,18 @@ body::before {
 
 .game-input {
     width: 100%;
-    padding: 1rem 1.2rem;
+    padding: 0.9rem 1.1rem;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 14px;
     color: var(--text);
     font-family: inherit;
-    font-size: 1rem;
+    font-size: clamp(0.9rem, 2.5vw, 1rem);
     outline: none;
     transition: all 0.2s;
+    /* iOS에서 zoom 방지 */
+    font-size: max(16px, 1rem);
+    min-height: 48px;
 }
 
 .game-input:focus {
@@ -236,18 +272,23 @@ body::before {
 /* Buttons */
 .btn-primary {
     width: 100%;
-    padding: 1rem;
+    padding: 0.95rem 1rem;
     background: var(--accent);
     border: none;
     border-radius: 14px;
     color: white;
     font-family: 'Black Han Sans', sans-serif;
-    font-size: 1.2rem;
+    font-size: clamp(1rem, 3vw, 1.2rem);
     letter-spacing: 0.1em;
     cursor: pointer;
     transition: all 0.2s;
     position: relative;
     overflow: hidden;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
 }
 
 .btn-primary::after {
@@ -255,6 +296,7 @@ body::before {
     position: absolute;
     inset: 0;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+    pointer-events: none;
 }
 
 .btn-primary:hover {
@@ -267,16 +309,23 @@ body::before {
     transform: translateY(0);
 }
 
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .btn-secondary {
-    padding: 0.7rem 1.2rem;
+    padding: 0.75rem 1.1rem;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 10px;
     color: var(--text);
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: clamp(0.8rem, 2.5vw, 0.9rem);
     cursor: pointer;
     transition: all 0.2s;
+    min-height: 44px;
 }
 
 .btn-secondary:hover {
@@ -284,25 +333,34 @@ body::before {
     color: var(--teal);
 }
 
-/* ====== LOBBY SCREEN ====== */
+.btn-secondary:active {
+    transform: scale(0.98);
+}
+
+/* ============================
+   LOBBY SCREEN
+   ============================ */
 .lobby-wrap {
     width: 100%;
     max-width: 560px;
-    padding: 1.5rem;
+    padding: var(--pad-x);
+    padding-top: max(var(--pad-x), env(safe-area-inset-top));
+    padding-bottom: max(var(--pad-x), env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
+    gap: var(--gap-md);
 }
 
 .lobby-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.5rem;
 }
 
 .lobby-title {
     font-family: 'Black Han Sans', sans-serif;
-    font-size: 1.8rem;
+    font-size: clamp(1.4rem, 5vw, 1.8rem);
     background: linear-gradient(135deg, #fff, var(--accent2));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -314,9 +372,10 @@ body::before {
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 0.3rem 0.8rem;
-    font-size: 0.8rem;
+    font-size: clamp(0.65rem, 2vw, 0.8rem);
     color: var(--text-muted);
     font-family: monospace;
+    flex-shrink: 0;
 }
 
 .invite-bar {
@@ -327,11 +386,13 @@ body::before {
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 0.8rem 1rem;
+    flex-wrap: wrap;
 }
 
 .invite-url {
     flex: 1;
-    font-size: 0.8rem;
+    min-width: 0;
+    font-size: clamp(0.65rem, 2vw, 0.8rem);
     color: var(--text-muted);
     font-family: monospace;
     overflow: hidden;
@@ -340,16 +401,18 @@ body::before {
 }
 
 .btn-copy {
-    padding: 0.4rem 0.9rem;
+    padding: 0.5rem 0.9rem;
     background: var(--purple);
     border: none;
     border-radius: 8px;
     color: white;
     font-family: inherit;
-    font-size: 0.8rem;
+    font-size: clamp(0.75rem, 2vw, 0.8rem);
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
+    min-height: 36px;
+    flex-shrink: 0;
 }
 
 .btn-copy:hover {
@@ -362,15 +425,15 @@ body::before {
 
 .players-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 0.8rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(110px, 28vw), 1fr));
+    gap: var(--gap-sm);
 }
 
 .player-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 1rem 0.8rem;
+    padding: clamp(0.7rem, 2vw, 1rem) 0.6rem;
     text-align: center;
     transition: all 0.3s ease;
     animation: playerEnter 0.3s ease;
@@ -394,13 +457,13 @@ body::before {
 }
 
 .player-avatar-sm {
-    font-size: 2.2rem;
+    font-size: clamp(1.8rem, 6vw, 2.2rem);
     margin-bottom: 0.4rem;
     display: block;
 }
 
 .player-name {
-    font-size: 0.8rem;
+    font-size: clamp(0.65rem, 2vw, 0.8rem);
     font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -418,7 +481,7 @@ body::before {
     background: var(--surface);
     border: 1px dashed var(--border);
     border-radius: 14px;
-    padding: 1rem 0.8rem;
+    padding: clamp(0.7rem, 2vw, 1rem) 0.6rem;
     text-align: center;
     color: var(--text-muted);
     font-size: 0.75rem;
@@ -433,48 +496,57 @@ body::before {
 .waiting-text {
     text-align: center;
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: clamp(0.8rem, 2.5vw, 0.85rem);
 }
 
-/* ====== GAME SCREEN ====== */
+/* ============================
+   GAME SCREEN — 기본: 모바일
+   ============================ */
 #gameScreen {
     justify-content: flex-start;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* 모바일 우선: 세로 단일 컬럼 레이아웃 */
 .game-layout {
     width: 100%;
-    max-width: 900px;
-    height: 100vh;
+    max-width: 960px;
+    /* 모바일: dvh 사용(주소창 포함) */
+    height: 100dvh;
+    min-height: -webkit-fill-available;
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto auto;
     grid-template-areas:
-        "header header"
-        "chat sidebar"
-        "input sidebar";
-    gap: 0;
-    padding: 1rem;
-    gap: 0.8rem;
+        "header"
+        "chat"
+        "sidebar"
+        "input";
+    padding: clamp(0.5rem, 2vw, 0.8rem);
+    gap: clamp(0.4rem, 1.5vw, 0.7rem);
+    padding-bottom: max(clamp(0.5rem, 2vw, 0.8rem), env(safe-area-inset-bottom));
 }
 
 .game-header {
     grid-area: header;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.6rem;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 0.8rem 1.2rem;
+    border-radius: 12px;
+    padding: 0.6rem 0.9rem;
+    flex-wrap: wrap;
 }
 
 .my-role-badge {
-    padding: 0.4rem 0.9rem;
+    padding: 0.35rem 0.75rem;
     border-radius: 8px;
-    font-size: 0.85rem;
+    font-size: clamp(0.7rem, 2.5vw, 0.85rem);
     font-weight: 700;
     letter-spacing: 0.05em;
+    white-space: nowrap;
 }
 
 .my-role-badge.citizen {
@@ -505,10 +577,11 @@ body::before {
 .topic-display {
     flex: 1;
     text-align: center;
+    min-width: 0;
 }
 
 .topic-category {
-    font-size: 0.7rem;
+    font-size: clamp(0.6rem, 1.8vw, 0.7rem);
     color: var(--text-muted);
     letter-spacing: 0.2em;
     text-transform: uppercase;
@@ -516,21 +589,22 @@ body::before {
 
 .topic-word {
     font-family: 'Black Han Sans', sans-serif;
-    font-size: 1.4rem;
+    font-size: clamp(1.1rem, 4vw, 1.4rem);
     color: var(--gold);
 }
 
 .liar-unknown {
     font-family: 'Black Han Sans', sans-serif;
-    font-size: 1.1rem;
+    font-size: clamp(0.95rem, 3vw, 1.1rem);
     color: var(--text-muted);
     letter-spacing: 0.1em;
 }
 
 .round-info {
-    font-size: 0.8rem;
+    font-size: clamp(0.7rem, 2vw, 0.8rem);
     color: var(--text-muted);
     text-align: right;
+    white-space: nowrap;
 }
 
 /* Chat area */
@@ -538,17 +612,20 @@ body::before {
     grid-area: chat;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1rem;
+    border-radius: 12px;
+    padding: clamp(0.6rem, 2vw, 1rem);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.8rem;
+    gap: 0.7rem;
+    -webkit-overflow-scrolling: touch;
+    /* 모바일에서 최소 높이 */
+    min-height: 180px;
 }
 
 .chat-message {
     display: flex;
-    gap: 0.8rem;
+    gap: 0.7rem;
     align-items: flex-start;
     animation: msgIn 0.3s ease;
 }
@@ -556,7 +633,7 @@ body::before {
 @keyframes msgIn {
     from {
         opacity: 0;
-        transform: translateX(-10px);
+        transform: translateX(-8px);
     }
 
     to {
@@ -570,18 +647,18 @@ body::before {
 }
 
 .chat-avatar {
-    font-size: 1.8rem;
+    font-size: clamp(1.4rem, 4vw, 1.8rem);
     flex-shrink: 0;
-    width: 40px;
+    width: 34px;
     text-align: center;
 }
 
 .chat-bubble-wrap {
-    max-width: 70%;
+    max-width: 75%;
 }
 
 .chat-sender {
-    font-size: 0.7rem;
+    font-size: clamp(0.6rem, 1.8vw, 0.7rem);
     color: var(--text-muted);
     margin-bottom: 0.2rem;
 }
@@ -594,8 +671,8 @@ body::before {
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 0.6rem 0.9rem;
-    font-size: 0.95rem;
+    padding: 0.55rem 0.85rem;
+    font-size: clamp(0.85rem, 2.5vw, 0.95rem);
     line-height: 1.5;
     word-break: break-word;
 }
@@ -607,30 +684,32 @@ body::before {
 
 .system-message {
     text-align: center;
-    font-size: 0.75rem;
+    font-size: clamp(0.65rem, 2vw, 0.75rem);
     color: var(--text-muted);
     padding: 0.3rem;
     letter-spacing: 0.05em;
 }
 
-/* Input area */
+/* Chat Input */
 .chat-input-area {
     grid-area: input;
     display: flex;
-    gap: 0.6rem;
+    gap: 0.5rem;
 }
 
 .chat-input {
     flex: 1;
-    padding: 0.8rem 1rem;
+    padding: 0.75rem 0.9rem;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     color: var(--text);
     font-family: inherit;
-    font-size: 0.95rem;
+    font-size: max(16px, 0.9rem);
+    /* iOS zoom 방지 */
     outline: none;
     transition: all 0.2s;
+    min-height: 48px;
 }
 
 .chat-input:focus {
@@ -643,7 +722,7 @@ body::before {
 }
 
 .btn-send {
-    padding: 0.8rem 1.2rem;
+    padding: 0.75rem 1rem;
     background: var(--accent);
     border: none;
     border-radius: 12px;
@@ -651,6 +730,8 @@ body::before {
     font-size: 1.1rem;
     cursor: pointer;
     transition: all 0.2s;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .btn-send:hover {
@@ -662,41 +743,53 @@ body::before {
     cursor: not-allowed;
 }
 
-/* Sidebar */
+/* Sidebar — 모바일: 가로 스크롤 카드 행 */
 .game-sidebar {
     grid-area: sidebar;
     display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
+    flex-direction: row;
+    gap: var(--gap-sm);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.3rem;
+    /* 스크롤바 숨기기 */
+    scrollbar-width: none;
+}
+
+.game-sidebar::-webkit-scrollbar {
+    display: none;
 }
 
 .sidebar-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1rem;
+    border-radius: 12px;
+    padding: 0.8rem;
+    /* 모바일: 카드가 가로로 배치될 때 고정 너비 */
+    flex: 0 0 auto;
+    min-width: 160px;
 }
 
 .sidebar-title {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     letter-spacing: 0.25em;
     color: var(--text-muted);
     text-transform: uppercase;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.6rem;
 }
 
 .turn-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.35rem;
 }
 
 .turn-player {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 0.7rem;
-    border-radius: 10px;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
     transition: all 0.3s;
     border: 1px solid transparent;
 }
@@ -706,24 +799,20 @@ body::before {
     border-color: rgba(230, 57, 70, 0.3);
 }
 
-.turn-player.done {
-    opacity: 0.5;
-}
-
 .turn-num {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--text-muted);
-    width: 16px;
+    width: 14px;
     text-align: center;
     flex-shrink: 0;
 }
 
 .turn-avatar {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
 }
 
 .turn-name {
-    font-size: 0.85rem;
+    font-size: clamp(0.75rem, 2.2vw, 0.85rem);
     font-weight: 600;
     flex: 1;
     overflow: hidden;
@@ -732,7 +821,7 @@ body::before {
 }
 
 .turn-indicator {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     color: var(--accent);
     font-weight: 700;
 }
@@ -740,21 +829,22 @@ body::before {
 .vote-actions {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem;
 }
 
 .btn-vote {
     width: 100%;
-    padding: 0.7rem;
+    padding: 0.6rem;
     background: rgba(230, 57, 70, 0.15);
     border: 1px solid rgba(230, 57, 70, 0.3);
-    border-radius: 10px;
+    border-radius: 8px;
     color: var(--accent2);
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: clamp(0.75rem, 2.2vw, 0.85rem);
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
+    min-height: 40px;
 }
 
 .btn-vote:hover {
@@ -762,17 +852,22 @@ body::before {
     box-shadow: 0 0 15px rgba(230, 57, 70, 0.2);
 }
 
+.btn-vote:active {
+    transform: scale(0.98);
+}
+
 .btn-skip {
     width: 100%;
-    padding: 0.7rem;
+    padding: 0.6rem;
     background: var(--surface2);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 8px;
     color: var(--text-muted);
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: clamp(0.75rem, 2.2vw, 0.85rem);
     cursor: pointer;
     transition: all 0.2s;
+    min-height: 40px;
 }
 
 .btn-skip:hover {
@@ -780,12 +875,67 @@ body::before {
     color: var(--teal);
 }
 
-/* ====== VOTING OVERLAY ====== */
+/* ============================
+   TABLET (600px+)
+   ============================ */
+@media (min-width: 600px) {
+    .players-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+
+    .game-header {
+        flex-wrap: nowrap;
+    }
+
+    .invite-bar {
+        flex-wrap: nowrap;
+    }
+}
+
+/* ============================
+   DESKTOP (768px+) — 2컬럼 게임 레이아웃 복원
+   ============================ */
+@media (min-width: 768px) {
+    .game-layout {
+        grid-template-columns: 1fr 260px;
+        grid-template-rows: auto 1fr auto;
+        grid-template-areas:
+            "header header"
+            "chat   sidebar"
+            "input  sidebar";
+    }
+
+    /* 데스크탑: 사이드바 세로 컬럼으로 복원 */
+    .game-sidebar {
+        flex-direction: column;
+        overflow-x: visible;
+        overflow-y: auto;
+        padding-bottom: 0;
+    }
+
+    .sidebar-card {
+        flex: 0 0 auto;
+        min-width: unset;
+        width: 100%;
+    }
+}
+
+@media (min-width: 960px) {
+    .game-layout {
+        grid-template-columns: 1fr 300px;
+        margin: 0 auto;
+    }
+}
+
+/* ============================
+   VOTING OVERLAY
+   ============================ */
 .overlay {
     position: fixed;
     inset: 0;
-    background: rgba(10, 10, 15, 0.85);
+    background: rgba(10, 10, 15, 0.88);
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     z-index: 100;
     display: flex;
     align-items: center;
@@ -793,6 +943,8 @@ body::before {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s;
+    padding: var(--pad-x);
+    overflow-y: auto;
 }
 
 .overlay.active {
@@ -805,34 +957,37 @@ body::before {
     max-width: 480px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 2rem;
-    margin: 1rem;
+    border-radius: 20px;
+    padding: clamp(1.2rem, 4vw, 2rem);
+    /* 모바일에서 화면을 넘치지 않게 */
+    max-height: 90dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .vote-header {
     text-align: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .vote-title {
     font-family: 'Black Han Sans', sans-serif;
-    font-size: 1.8rem;
+    font-size: clamp(1.4rem, 5vw, 1.8rem);
     color: var(--accent2);
     margin-bottom: 0.3rem;
 }
 
 .vote-subtitle {
-    font-size: 0.85rem;
+    font-size: clamp(0.75rem, 2.5vw, 0.85rem);
     color: var(--text-muted);
 }
 
 .vote-timer {
     font-family: 'Black Han Sans', sans-serif;
-    font-size: 3rem;
+    font-size: clamp(2rem, 8vw, 3rem);
     color: var(--gold);
     text-align: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
     transition: color 0.3s;
 }
 
@@ -857,7 +1012,7 @@ body::before {
     height: 4px;
     background: var(--border);
     border-radius: 2px;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     overflow: hidden;
 }
 
@@ -871,23 +1026,33 @@ body::before {
 .vote-players {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.7rem;
-    margin-bottom: 1.5rem;
+    gap: clamp(0.4rem, 2vw, 0.7rem);
+    margin-bottom: 1rem;
+}
+
+/* 플레이어가 3명 이상이면 자동 컬럼 */
+@media (min-width: 400px) {
+    .vote-players {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    }
 }
 
 .vote-player-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.9rem 0.5rem;
+    gap: 0.35rem;
+    padding: clamp(0.6rem, 2vw, 0.9rem) 0.5rem;
     background: var(--surface2);
     border: 2px solid var(--border);
-    border-radius: 14px;
+    border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
     color: var(--text);
     font-family: inherit;
+    min-height: 80px;
+    /* 터치 영역 확보 */
+    -webkit-tap-highlight-color: transparent;
 }
 
 .vote-player-btn:hover {
@@ -908,36 +1073,39 @@ body::before {
 }
 
 .vote-player-avatar {
-    font-size: 2rem;
+    font-size: clamp(1.6rem, 5vw, 2rem);
 }
 
 .vote-player-name {
-    font-size: 0.8rem;
+    font-size: clamp(0.7rem, 2vw, 0.8rem);
     font-weight: 700;
 }
 
 .vote-count-info {
     text-align: center;
-    font-size: 0.8rem;
+    font-size: clamp(0.72rem, 2vw, 0.8rem);
     color: var(--text-muted);
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
 }
 
-/* ====== RESULT OVERLAY ====== */
+/* ============================
+   RESULT OVERLAY
+   ============================ */
 .result-modal {
     width: 100%;
     max-width: 480px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 2.5rem 2rem;
-    margin: 1rem;
+    border-radius: 20px;
+    padding: clamp(1.5rem, 5vw, 2.5rem) clamp(1rem, 4vw, 2rem);
     text-align: center;
+    max-height: 90dvh;
+    overflow-y: auto;
 }
 
 .result-outcome {
     font-family: 'Black Han Sans', sans-serif;
-    font-size: 2.5rem;
+    font-size: clamp(1.8rem, 7vw, 2.5rem);
     margin-bottom: 0.5rem;
     animation: resultReveal 0.5s ease;
 }
@@ -964,20 +1132,20 @@ body::before {
 
 .result-desc {
     color: var(--text-muted);
-    font-size: 0.9rem;
-    margin-bottom: 1.5rem;
+    font-size: clamp(0.8rem, 2.5vw, 0.9rem);
+    margin-bottom: 1.2rem;
 }
 
 .result-liar-reveal {
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 1.2rem;
-    margin-bottom: 1.5rem;
+    padding: clamp(0.8rem, 3vw, 1.2rem);
+    margin-bottom: 1.2rem;
 }
 
 .result-liar-label {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     letter-spacing: 0.25em;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -993,16 +1161,16 @@ body::before {
 }
 
 .result-liar-avatar {
-    font-size: 2.5rem;
+    font-size: clamp(2rem, 6vw, 2.5rem);
 }
 
 .result-liar-name {
-    font-size: 1.2rem;
+    font-size: clamp(1rem, 3.5vw, 1.2rem);
     font-weight: 700;
 }
 
 .result-topic {
-    font-size: 0.85rem;
+    font-size: clamp(0.75rem, 2.5vw, 0.85rem);
     color: var(--text-muted);
 }
 
@@ -1011,45 +1179,26 @@ body::before {
     font-weight: 700;
 }
 
-/* ====== MOBILE ====== */
-@media (max-width: 700px) {
-    .game-layout {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr 200px auto;
-        grid-template-areas:
-            "header"
-            "chat"
-            "sidebar"
-            "input";
-        height: auto;
-        min-height: 100vh;
-        padding: 0.7rem;
-    }
-
-    .logo-title {
-        font-size: 3rem;
-    }
-
-    .vote-players {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-/* Toast */
+/* ============================
+   TOAST
+   ============================ */
 .toast {
     position: fixed;
-    bottom: 2rem;
+    bottom: max(2rem, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%) translateY(20px);
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 0.7rem 1.2rem;
-    font-size: 0.85rem;
+    font-size: clamp(0.75rem, 2.5vw, 0.85rem);
     opacity: 0;
     transition: all 0.3s;
     z-index: 200;
     white-space: nowrap;
+    max-width: calc(100vw - 2rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .toast.show {
@@ -1057,7 +1206,9 @@ body::before {
     transform: translateX(-50%) translateY(0);
 }
 
-/* Particle / decorative */
+/* ============================
+   PARTICLES
+   ============================ */
 .floating-particles {
     position: fixed;
     inset: 0;
@@ -1093,18 +1244,38 @@ body::before {
     }
 }
 
+/* ============================
+   SPINNER
+   ============================ */
 .spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.25);
     border-top-color: white;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     display: inline-block;
+    flex-shrink: 0;
 }
 
 @keyframes spin {
     to {
         transform: rotate(360deg);
     }
+}
+
+/* ============================
+   터치 최적화
+   ============================ */
+button,
+input,
+a {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 포커스 링 */
+button:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
